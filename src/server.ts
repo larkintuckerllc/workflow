@@ -48,18 +48,36 @@ app.post('/a', workflowAllow(1), (req, res) => {
   res.send({ hello: 'A' });
 });
 
-app.post('/b', workflowAllow(2), (req, res) => {
-  // TODO: CHANGE WORKFLOW
-  res.send({ hello: 'B' });
+app.post('/b', workflowAllow(2), async (req, res) => {
+  const workflow_id = req.body.workflow_id; // ALREADY VALIDATED
+  try {
+    await pg('workflows')
+      .where('id', workflow_id)
+      .update({
+        workflow_state_id: 2,
+      });
+    res.send({ hello: 'B (State Changed)' });
+  } catch (err) {
+    res.sendStatus(500);
+  }
 });
 
 app.post('/c', workflowAllow(3), (req, res) => {
   res.send({ hello: 'C' });
 });
 
-app.post('/d', workflowAllow(4), (req, res) => {
-  // TODO: CHANGE WORKFLOW
-  res.send({ hello: 'D' });
+app.post('/d', workflowAllow(4), async (req, res) => {
+  const workflow_id = req.body.workflow_id; // ALREADY VALIDATED
+  try {
+    await pg('workflows')
+      .where('id', workflow_id)
+      .update({
+        workflow_state_id: 3,
+      });
+    res.send({ hello: 'D (State Changed)' });
+  } catch (err) {
+    res.sendStatus(500);
+  }
 });
 
 app.post('/e', workflowAllow(5), (req, res) => {
