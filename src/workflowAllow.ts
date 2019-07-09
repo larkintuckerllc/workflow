@@ -18,7 +18,6 @@ export default (workflowActionId: number) => async (
     return;
   }
   try {
-    // TODO: COLLAPSE INTO SINGLE QUERY
     const workflows = await pg
       .select<Workflow[]>('id', 'workflow_state_id', 'workflow_type_id')
       .from('workflows')
