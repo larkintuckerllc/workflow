@@ -8,17 +8,32 @@ export const authenticate = (req: Request, res: Response, next: NextFunction) =>
     res.status(401).send();
     return;
   }
+  req.body.user = user;
   next();
 };
 
-export const authorize = (workflowActionName: string) => async (
+export const authorize = (name?: string) => async (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
-  const user = req.headers.authorization; // TYPICALLY TRANSFORMED BY AUTHENTICATE
+  const workflowActionNameFromAllow: string = req.body.workflow_action_name;
+  if (
+    workflowActionNameFromAllow !== undefined &&
+    name !== undefined &&
+    workflowActionNameFromAllow !== name
+  ) {
+    res.sendStatus(500);
+    return;
+  }
+  const workflowActionName = name !== undefined ? name : workflowActionNameFromAllow;
+  if (workflowActionName === undefined) {
+    res.sendStatus(500);
+    return;
+  }
+  const user = req.body.user;
   if (user === undefined) {
-    res.status(401).send();
+    res.sendStatus(500);
     return;
   }
   const workflow_id = req.body.workflow_id;
@@ -27,17 +42,20 @@ export const authorize = (workflowActionName: string) => async (
     return;
   }
   try {
-    const workflows = await pg
-      .select<Workflow[]>('id', 'workflow_state_id', 'workflow_type_id')
-      .from('workflows')
-      .where({
-        id: workflow_id,
-      });
-    if (workflows.length === 0) {
-      res.sendStatus(404);
-      return;
+    let workflowStateId: number = req.body.workflow_state_id;
+    if (workflowStateId === undefined) {
+      const workflows = await pg
+        .select<Workflow[]>('id', 'workflow_state_id', 'workflow_type_id')
+        .from('workflows')
+        .where({
+          id: workflow_id,
+        });
+      if (workflows.length === 0) {
+        res.sendStatus(404);
+        return;
+      }
+      workflowStateId = workflows[0].workflow_state_id;
     }
-    const { workflow_state_id: workflowStateId } = workflows[0];
     const profilePermissions = await pg
       .select<any[]>('permissions_workflow.id')
       .from('users')
