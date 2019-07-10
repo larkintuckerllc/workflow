@@ -11,7 +11,7 @@ export const authenticate = (req: Request, res: Response, next: NextFunction) =>
   next();
 };
 
-export const authorize = (workflowActionId: number) => async (
+export const authorize = (workflowActionName: string) => async (
   req: Request,
   res: Response,
   next: NextFunction
@@ -45,10 +45,15 @@ export const authorize = (workflowActionId: number) => async (
       .innerJoin('profiles_permissions', 'profiles.id', 'profiles_permissions.profile_id')
       .innerJoin('permissions', 'profiles_permissions.permission_id', 'permissions.id')
       .innerJoin('permissions_workflow', 'permissions.id', 'permissions_workflow.permission_id')
+      .innerJoin(
+        'workflow_actions',
+        'permissions_workflow.workflow_action_id',
+        'workflow_actions.id'
+      )
       .where({
-        'permissions_workflow.workflow_action_id': workflowActionId,
         'permissions_workflow.workflow_state_id': workflowStateId,
         'users.name': user,
+        'workflow_actions.name': workflowActionName,
       });
     const profilePermission = profilePermissions.length !== 0;
     const permissionSetPermissions = await pg
@@ -63,10 +68,15 @@ export const authorize = (workflowActionId: number) => async (
       )
       .innerJoin('permissions', 'permission_sets_permissions.permission_id', 'permissions.id')
       .innerJoin('permissions_workflow', 'permissions.id', 'permissions_workflow.permission_id')
+      .innerJoin(
+        'workflow_actions',
+        'permissions_workflow.workflow_action_id',
+        'workflow_actions.id'
+      )
       .where({
-        'permissions_workflow.workflow_action_id': workflowActionId,
         'permissions_workflow.workflow_state_id': workflowStateId,
         'users.name': user,
+        'workflow_actions.name': workflowActionName,
       });
     const permissionSetPermission = permissionSetPermissions.length !== 0;
     if (!profilePermission && !permissionSetPermission) {

@@ -7,7 +7,7 @@ export interface Workflow {
   workflow_type_id: number;
 }
 
-export default (workflowActionId: number) => async (
+export default (workflowActionName: string) => async (
   req: Request,
   res: Response,
   next: NextFunction
@@ -30,11 +30,16 @@ export default (workflowActionId: number) => async (
     }
     const { workflow_state_id: workflowStateId } = workflows[0];
     const stateActions = await pg
-      .select<any[]>('id')
+      .select<any[]>('workflow_states_workflow_actions.id')
       .from('workflow_states_workflow_actions')
+      .innerJoin(
+        'workflow_actions',
+        'workflow_states_workflow_actions.workflow_action_id',
+        'workflow_actions.id'
+      )
       .where({
-        workflow_action_id: workflowActionId,
-        workflow_state_id: workflowStateId,
+        'workflow_actions.name': workflowActionName,
+        'workflow_states_workflow_actions.workflow_state_id': workflowStateId,
       });
     if (stateActions.length === 0) {
       res.sendStatus(409);
