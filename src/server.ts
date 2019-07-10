@@ -1,7 +1,7 @@
 import bodyParser from 'body-parser';
 import cors from 'cors';
 import express, { NextFunction, Request, Response } from 'express';
-// import { Action, authenticate, authorize } from './auth';
+import { authenticate, authorize } from './auth';
 import pg from './pg';
 import workflowAllow, { Workflow } from './workflowAllow';
 
@@ -44,11 +44,11 @@ app.post('/workflows', async (req, res) => {
   }
 });
 
-app.post('/a', workflowAllow(1), (req, res) => {
+app.post('/a', authenticate, workflowAllow(1), authorize(1), (req, res) => {
   res.send({ hello: 'A' });
 });
 
-app.post('/b', workflowAllow(2), async (req, res) => {
+app.post('/b', authenticate, workflowAllow(2), authorize(2), async (req, res) => {
   const workflow_id = req.body.workflow_id; // ALREADY VALIDATED
   try {
     await pg('workflows')
@@ -62,11 +62,11 @@ app.post('/b', workflowAllow(2), async (req, res) => {
   }
 });
 
-app.post('/c', workflowAllow(3), (req, res) => {
+app.post('/c', authenticate, workflowAllow(3), authorize(3), (req, res) => {
   res.send({ hello: 'C' });
 });
 
-app.post('/d', workflowAllow(4), async (req, res) => {
+app.post('/d', authenticate, workflowAllow(4), authorize(4), async (req, res) => {
   const workflow_id = req.body.workflow_id; // ALREADY VALIDATED
   try {
     await pg('workflows')
@@ -80,11 +80,11 @@ app.post('/d', workflowAllow(4), async (req, res) => {
   }
 });
 
-app.post('/e', workflowAllow(5), (req, res) => {
+app.post('/e', authenticate, workflowAllow(5), authorize(5), (req, res) => {
   res.send({ hello: 'E' });
 });
 
-app.post('/f', workflowAllow(6), (req, res) => {
+app.post('/f', authenticate, workflowAllow(6), authorize(6), (req, res) => {
   res.send({ hello: 'F' });
 });
 
