@@ -5,6 +5,12 @@ import { authenticate, authorize } from './auth';
 import pg from './pg';
 import workflowAllow, { Workflow } from './workflowAllow';
 
+interface User {
+  id: number;
+  name: string;
+  profile_id: number;
+}
+
 const WORKFLOW_TYPE_ID = 1;
 const INITIAL_WORKFLOW_STATE_ID = 1;
 
@@ -13,6 +19,15 @@ app.use(cors());
 app.use(bodyParser.json());
 
 app.get('/', (req, res) => res.send({ hello: 'world' }));
+
+app.get('/users', async (req, res) => {
+  try {
+    const users = await pg.select<User[]>('id', 'name', 'profile_id').from('users');
+    res.send(users);
+  } catch (err) {
+    res.sendStatus(500);
+  }
+});
 
 app.get('/workflows', async (req, res) => {
   try {
