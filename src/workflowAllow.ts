@@ -12,6 +12,7 @@ export default (workflowActionName: string) => async (
   res: Response,
   next: NextFunction
 ) => {
+  req.body.workflow_action_name = workflowActionName;
   const workflow_id = req.body.workflow_id;
   if (typeof workflow_id !== 'number') {
     res.status(400).send();
@@ -29,6 +30,7 @@ export default (workflowActionName: string) => async (
       return;
     }
     const { workflow_state_id: workflowStateId } = workflows[0];
+    req.body.workflow_state_id = workflowStateId;
     const stateActions = await pg
       .select<any[]>('workflow_states_workflow_actions.id')
       .from('workflow_states_workflow_actions')

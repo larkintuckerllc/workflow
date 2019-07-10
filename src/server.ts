@@ -44,15 +44,19 @@ app.post('/workflows', async (req, res) => {
   }
 });
 
-app.post('/a', authenticate, workflowAllow('A'), authorize('A'), (req, res) => {
+app.post('/a', authenticate, workflowAllow('A'), authorize(), (req, res) => {
   res.send({ hello: 'A' });
 });
 
-app.post('/b', authenticate, workflowAllow('B'), authorize('B'), async (req, res) => {
-  const workflow_id = req.body.workflow_id; // ALREADY VALIDATED
+app.post('/b', authenticate, workflowAllow('B'), authorize(), async (req, res) => {
+  const workflowId = req.body.workflow_id;
+  if (workflowId === undefined) {
+    res.sendStatus(400);
+    return;
+  }
   try {
     await pg('workflows')
-      .where('id', workflow_id)
+      .where('id', workflowId)
       .update({
         workflow_state_id: 2,
       });
@@ -62,15 +66,19 @@ app.post('/b', authenticate, workflowAllow('B'), authorize('B'), async (req, res
   }
 });
 
-app.post('/c', authenticate, workflowAllow('C'), authorize('C'), (req, res) => {
+app.post('/c', authenticate, workflowAllow('C'), authorize(), (req, res) => {
   res.send({ hello: 'C' });
 });
 
-app.post('/d', authenticate, workflowAllow('D'), authorize('D'), async (req, res) => {
-  const workflow_id = req.body.workflow_id; // ALREADY VALIDATED
+app.post('/d', authenticate, workflowAllow('D'), authorize(), async (req, res) => {
+  const workflowId = req.body.workflow_id;
+  if (workflowId === undefined) {
+    res.sendStatus(400);
+    return;
+  }
   try {
     await pg('workflows')
-      .where('id', workflow_id)
+      .where('id', workflowId)
       .update({
         workflow_state_id: 3,
       });
@@ -80,11 +88,12 @@ app.post('/d', authenticate, workflowAllow('D'), authorize('D'), async (req, res
   }
 });
 
-app.post('/e', authenticate, workflowAllow('E'), authorize('E'), (req, res) => {
+app.post('/e', authenticate, workflowAllow('E'), authorize(), (req, res) => {
   res.send({ hello: 'E' });
 });
 
-app.post('/f', authenticate, workflowAllow('F'), authorize('F'), (req, res) => {
+// EXAMPLE OF NOT USING WORKFLOW ALLOW
+app.post('/f', authenticate, authorize('F'), (req, res) => {
   res.send({ hello: 'F' });
 });
 
