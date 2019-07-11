@@ -3,36 +3,32 @@ import pg from './pg';
 
 export interface Workflow {
   id: number;
-  workflow_state_id: number;
-  workflow_type_id: number;
+  stateId: number;
+  typeId: number;
 }
 
-export default (workflowActionName: string) => async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  req.body.workflow_action_name = workflowActionName;
-  const workflow_id = req.body.workflow_id;
-  if (typeof workflow_id !== 'number') {
+export default (actionName: string) => async (req: Request, res: Response, next: NextFunction) => {
+  req.body.workflowActionName = actionName;
+  const id = req.body.workflowId;
+  if (typeof id !== 'number') {
     res.status(400).send();
     return;
   }
   try {
     const workflows = await pg
-      .select<Workflow[]>('id', 'workflow_state_id', 'workflow_type_id')
+      .select<Workflow[]>('id', { stateId: 'workflow_state_id' }, { typeId: 'workflow_type_id' })
       .from('workflows')
       .where({
-        id: workflow_id,
+        id,
       });
     if (workflows.length === 0) {
       res.sendStatus(404);
       return;
     }
-    const { workflow_state_id: workflowStateId } = workflows[0];
-    req.body.workflow_state_id = workflowStateId;
+    const { stateId } = workflows[0];
+    req.body.workflow_state_id = stateId;
     const stateActions = await pg
-      .select<any[]>('workflow_states_workflow_actions.id')
+      .select<number[]>('workflow_states_workflow_actions.id')
       .from('workflow_states_workflow_actions')
       .innerJoin(
         'workflow_actions',
@@ -40,8 +36,8 @@ export default (workflowActionName: string) => async (
         'workflow_actions.id'
       )
       .where({
-        'workflow_actions.name': workflowActionName,
-        'workflow_states_workflow_actions.workflow_state_id': workflowStateId,
+        'workflow_actions.name': actionName,
+        'workflow_states_workflow_actions.workflow_state_id': stateId,
       });
     if (stateActions.length === 0) {
       res.sendStatus(409);
@@ -49,7 +45,7 @@ export default (workflowActionName: string) => async (
     }
     next();
   } catch (err) {
-    res.send(500).send();
+    res.sendStatus(500);
     return;
   }
 };

@@ -17,17 +17,13 @@ export const authorize = (name?: string) => async (
   res: Response,
   next: NextFunction
 ) => {
-  const workflowActionNameFromAllow: string = req.body.workflow_action_name;
-  if (
-    workflowActionNameFromAllow !== undefined &&
-    name !== undefined &&
-    workflowActionNameFromAllow !== name
-  ) {
+  const actionNameFromAllow: string = req.body.workflowActionName;
+  if (actionNameFromAllow !== undefined && name !== undefined && actionNameFromAllow !== name) {
     res.sendStatus(500);
     return;
   }
-  const workflowActionName = name !== undefined ? name : workflowActionNameFromAllow;
-  if (workflowActionName === undefined) {
+  const actionName = name !== undefined ? name : actionNameFromAllow;
+  if (actionName === undefined) {
     res.sendStatus(500);
     return;
   }
@@ -36,28 +32,28 @@ export const authorize = (name?: string) => async (
     res.sendStatus(500);
     return;
   }
-  const workflow_id = req.body.workflow_id;
-  if (typeof workflow_id !== 'number') {
+  const id = req.body.workflowId;
+  if (typeof id !== 'number') {
     res.status(400).send();
     return;
   }
   try {
-    let workflowStateId: number = req.body.workflow_state_id;
-    if (workflowStateId === undefined) {
+    let stateId: number = req.body.workflowStateId;
+    if (stateId === undefined) {
       const workflows = await pg
-        .select<Workflow[]>('id', 'workflow_state_id', 'workflow_type_id')
+        .select<Workflow[]>('id', { stateId: 'workflow_state_id' }, { typeId: 'workflow_type_id' })
         .from('workflows')
         .where({
-          id: workflow_id,
+          id,
         });
       if (workflows.length === 0) {
         res.sendStatus(404);
         return;
       }
-      workflowStateId = workflows[0].workflow_state_id;
+      stateId = workflows[0].stateId;
     }
     const profilePermissions = await pg
-      .select<any[]>('permissions_workflow.id')
+      .select<number[]>('permissions_workflow.id')
       .from('users')
       .innerJoin('profiles', 'users.profile_id', 'profiles.id')
       .innerJoin('profiles_permissions', 'profiles.id', 'profiles_permissions.profile_id')
@@ -69,13 +65,13 @@ export const authorize = (name?: string) => async (
         'workflow_actions.id'
       )
       .where({
-        'permissions_workflow.workflow_state_id': workflowStateId,
+        'permissions_workflow.workflow_state_id': stateId,
         'users.name': user,
-        'workflow_actions.name': workflowActionName,
+        'workflow_actions.name': actionName,
       });
     const profilePermission = profilePermissions.length !== 0;
     const permissionSetPermissions = await pg
-      .select<any[]>('permissions_workflow.id')
+      .select<number[]>('permissions_workflow.id')
       .from('users')
       .innerJoin('users_permission_sets', 'users.id', 'users_permission_sets.user_id')
       .innerJoin('permission_sets', 'users_permission_sets.permission_set_id', 'permission_sets.id')
@@ -92,9 +88,9 @@ export const authorize = (name?: string) => async (
         'workflow_actions.id'
       )
       .where({
-        'permissions_workflow.workflow_state_id': workflowStateId,
+        'permissions_workflow.workflow_state_id': stateId,
         'users.name': user,
-        'workflow_actions.name': workflowActionName,
+        'workflow_actions.name': actionName,
       });
     const permissionSetPermission = permissionSetPermissions.length !== 0;
     if (!profilePermission && !permissionSetPermission) {

@@ -8,7 +8,13 @@ import workflowAllow, { Workflow } from './workflowAllow';
 interface User {
   id: number;
   name: string;
-  profile_id: number;
+  profileId: number;
+}
+
+interface WorkflowTypesActionsStates {
+  workflow_type_id: number;
+  'workflow_actions.name': number;
+  workflow_state_id: number;
 }
 
 const WORKFLOW_TYPE_ID = 1;
@@ -22,7 +28,7 @@ app.get('/', (req, res) => res.send({ hello: 'world' }));
 
 app.get('/users', async (req, res) => {
   try {
-    const users = await pg.select<User[]>('id', 'name', 'profile_id').from('users');
+    const users = await pg.select<User[]>('id', 'name', { profileId: 'profile_id' }).from('users');
     res.send(users);
   } catch (err) {
     res.sendStatus(500);
@@ -32,9 +38,38 @@ app.get('/users', async (req, res) => {
 app.get('/workflows', async (req, res) => {
   try {
     const workflows = await pg
-      .select<Workflow[]>('id', 'workflow_state_id', 'workflow_type_id')
+      .select<Workflow[]>('id', { stateId: 'workflow_state_id' }, { typeId: 'workflow_type_id' })
       .from('workflows');
     res.send(workflows);
+  } catch (err) {
+    res.sendStatus(500);
+  }
+});
+
+app.get('/workflow-types-actions-states', async (req, res) => {
+  try {
+    const workflowTypesActionsStates = await pg
+      .select<WorkflowTypesActionsStates[]>(
+        'workflow_types_workflow_actions.workflow_type_id',
+        {
+          'workflow_actions.name': 'workflow_actions.name',
+        },
+        'workflow_states_workflow_actions.workflow_state_id'
+      )
+      .from('workflow_types_workflow_actions')
+      .innerJoin(
+        'workflow_actions',
+        'workflow_types_workflow_actions.workflow_action_id',
+        'workflow_actions.id'
+      )
+      .leftOuterJoin(
+        'workflow_states_workflow_actions',
+        'workflow_types_workflow_actions.workflow_action_id',
+        'workflow_states_workflow_actions.workflow_action_id'
+      );
+    // TODO: NEED ANOTHER JOIN FOR ONLY STATES OF WORKFLOW TYPE
+    // TODO: CLEAN UP DATA
+    res.send(workflowTypesActionsStates);
   } catch (err) {
     res.sendStatus(500);
   }
@@ -50,8 +85,8 @@ app.post('/workflows', async (req, res) => {
       });
     const workflow = {
       id,
-      workflow_state_id: INITIAL_WORKFLOW_STATE_ID,
-      workflow_type_id: WORKFLOW_TYPE_ID,
+      stateId: INITIAL_WORKFLOW_STATE_ID,
+      typeId: WORKFLOW_TYPE_ID,
     };
     res.send(workflow);
   } catch (err) {
@@ -64,7 +99,7 @@ app.post('/a', authenticate, workflowAllow('A'), authorize(), (req, res) => {
 });
 
 app.post('/b', authenticate, workflowAllow('B'), authorize(), async (req, res) => {
-  const workflowId = req.body.workflow_id;
+  const workflowId = req.body.workflowId;
   if (workflowId === undefined) {
     res.sendStatus(400);
     return;
@@ -86,7 +121,7 @@ app.post('/c', authenticate, workflowAllow('C'), authorize(), (req, res) => {
 });
 
 app.post('/d', authenticate, workflowAllow('D'), authorize(), async (req, res) => {
-  const workflowId = req.body.workflow_id;
+  const workflowId = req.body.workflowId;
   if (workflowId === undefined) {
     res.sendStatus(400);
     return;
