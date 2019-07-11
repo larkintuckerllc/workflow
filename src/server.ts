@@ -11,10 +11,36 @@ interface User {
   profileId: number;
 }
 
-interface WorkflowTypesActionsStates {
+interface WorkflowType {
+  id: number;
+  name: string;
+}
+
+interface WorkflowAction {
+  id: number;
+  name: string;
+}
+
+interface WorkflowState {
+  id: number;
+}
+
+interface WorkflowActionWithStates extends WorkflowAction {
+  workflowStates: WorkflowState[];
+}
+
+interface WorkflowTypeWorkflowAction {
+  workflow_action_id: number;
   workflow_type_id: number;
-  'workflow_actions.name': number;
+}
+
+interface WorkflowStateWorkflowAction {
+  workflow_action_id: number;
   workflow_state_id: number;
+}
+
+interface WorkflowActionsWithStatesById {
+  [key: number]: WorkflowActionWithStates;
 }
 
 const WORKFLOW_TYPE_ID = 1;
@@ -46,30 +72,42 @@ app.get('/workflows', async (req, res) => {
   }
 });
 
-app.get('/workflow-types-actions-states', async (req, res) => {
+app.get('/workflow-types', async (req, res) => {
   try {
-    const workflowTypesActionsStates = await pg
-      .select<WorkflowTypesActionsStates[]>(
-        'workflow_types_workflow_actions.workflow_type_id',
-        {
-          'workflow_actions.name': 'workflow_actions.name',
-        },
-        'workflow_states_workflow_actions.workflow_state_id'
-      )
-      .from('workflow_types_workflow_actions')
-      .innerJoin(
-        'workflow_actions',
-        'workflow_types_workflow_actions.workflow_action_id',
-        'workflow_actions.id'
-      )
-      .leftOuterJoin(
-        'workflow_states_workflow_actions',
-        'workflow_types_workflow_actions.workflow_action_id',
-        'workflow_states_workflow_actions.workflow_action_id'
+    const workflowTypes = await pg.select<WorkflowType[]>('id', 'name').from('workflow_types');
+    const workflowActions = await pg
+      .select<WorkflowAction[]>('id', 'name')
+      .from('workflow_actions');
+    const typesActions = await pg
+      .select<WorkflowTypeWorkflowAction[]>('workflow_type_id', 'workflow_action_id')
+      .from('workflow_types_workflow_actions');
+    const statesActions = await pg
+      .select<WorkflowStateWorkflowAction[]>('workflow_state_id', 'workflow_action_id')
+      .from('workflow_states_workflow_actions');
+    const workflowActionsWithStates = workflowActions.map<WorkflowActionWithStates>(
+      workflowAction => {
+        const matchingStatesActions = statesActions.filter(
+          stateAction => stateAction.workflow_action_id === workflowAction.id
+        );
+        const matchingWorkflowStates = matchingStatesActions.map(stateAction => ({
+          id: stateAction.workflow_state_id,
+        }));
+        return { ...workflowAction, workflowStates: matchingWorkflowStates };
+      }
+    );
+    const workflowActionsWithStatesById = workflowActionsWithStates.reduce<
+      WorkflowActionsWithStatesById
+    >((prev, action) => ({ ...prev, [action.id]: action }), {});
+    const workflowTypesWithActions = workflowTypes.map(workflowType => {
+      const matchingTypesActions = typesActions.filter(
+        typeAction => typeAction.workflow_type_id === workflowType.id
       );
-    // TODO: NEED ANOTHER JOIN FOR ONLY STATES OF WORKFLOW TYPE
-    // TODO: CLEAN UP DATA
-    res.send(workflowTypesActionsStates);
+      const matchingWorkflowActions = matchingTypesActions.map(
+        typeAction => workflowActionsWithStatesById[typeAction.workflow_action_id]
+      );
+      return { ...workflowType, workflowActions: matchingWorkflowActions };
+    });
+    res.send(workflowTypesWithActions);
   } catch (err) {
     res.sendStatus(500);
   }
